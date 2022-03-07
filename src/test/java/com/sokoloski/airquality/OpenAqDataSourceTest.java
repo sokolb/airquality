@@ -1,5 +1,8 @@
 package com.sokoloski.airquality;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -9,6 +12,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,7 +45,7 @@ public class OpenAqDataSourceTest {
     }
 
     @Test
-    public void getByCountryAndMeasuredParam_CallsOpenAqLocationsUrl() {
+    public void getByCountryAndMeasuredParam_CallsOpenAqLocationsUrl() throws JSONException {
         String countryCode = "US";
         testObject.getByCountryAndMeasuredParam(countryCode,"pm25");
 
@@ -52,7 +57,7 @@ public class OpenAqDataSourceTest {
     }
 
     @Test
-    public void getByCountryAndMeasuredParam_ReturnEmptyListWhenAqLocationsDoesntReturn200(){
+    public void getByCountryAndMeasuredParam_ReturnEmptyListWhenAqLocationsDoesntReturn200() throws JSONException {
         String countryCode = "US";
         ResponseEntity<String> response = new ResponseEntity<String>("", HttpStatus.INTERNAL_SERVER_ERROR);
 
@@ -66,5 +71,72 @@ public class OpenAqDataSourceTest {
         List<AirQuality> retval = testObject.getByCountryAndMeasuredParam(countryCode,"pm25");
 
         Assert.assertEquals(null, retval);
+    }
+
+    @Test
+    public void getByCountryAndMeasuredParam_ReturnListWithValidData() throws JSONException {
+        String countryCode = "US";
+
+        List<AirQuality> allAqs = new ArrayList<AirQuality>();
+        AirQuality aq = new AirQuality();
+        aq.setId(44654);
+        aq.setName("Faimront MN");
+        aq.setCountry("US");
+        aq.setCoordinates(new AirQualityCooredinates(36.1335,-122.443));
+        aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
+        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
+        allAqs.add(aq);
+
+        JSONObject jsonBody = getResponseJsonBody(allAqs);
+        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
+
+        Mockito.when(restTemplate.exchange(
+                        eq(locationUrl + "&country_id=" + countryCode),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        List<AirQuality> retval = testObject.getByCountryAndMeasuredParam(countryCode,"pm25");
+
+        Assert.assertEquals(allAqs.size(), retval.size());
+        Assert.assertEquals(allAqs.get(0).getId(), retval.get(0).getId());
+        Assert.assertEquals(allAqs.get(0).getParameters().size(), retval.get(0).getParameters().size());
+    }
+
+    private JSONObject getResponseJsonBody(List<AirQuality> airQualities) throws JSONException {
+        JSONObject jsonBody = new JSONObject();
+
+        JSONObject meta = new JSONObject();
+        jsonBody.put("meta", "");
+
+        JSONArray results = new JSONArray();
+        for (AirQuality aq : airQualities) {
+            JSONObject result = new JSONObject();
+            result.put("id", aq.getId());
+            result.put("name", aq.getName());
+            result.put("country", aq.getCountry());
+            JSONObject coordinates = new JSONObject();
+            coordinates.put("latitude", aq.getCoordinates().getLatitude());
+            coordinates.put("longitude", aq.getCoordinates().getLongitude());
+            result.put("coordinates", coordinates);
+
+            JSONArray parameters = new JSONArray();
+            for (AirQualityParameter aqp: aq.getParameters()) {
+                JSONObject parameter = new JSONObject();
+                parameter.put("id", aqp.getId());
+                parameter.put("unit", aqp.getUnit());
+                parameter.put("lastValue", aqp.getLastValue());
+                parameter.put("parameter", aqp.getParameter());
+                parameter.put("displayName", aqp.getDisplayName());
+                parameters.put(parameter);
+            }
+            result.put("parameters", parameters);
+
+            results.put(result);
+        }
+        jsonBody.put("results", results);
+
+        return jsonBody;
     }
 }

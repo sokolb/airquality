@@ -40,4 +40,23 @@ public class AirQualityController {
         }
         return response;
     }
+
+    @GetMapping(value = "/airQualityByCoordinatesAndRadiusAndMeasuredParam")
+    public ResponseEntity<String> airQualityByCoordinatesAndRadiusAndMeasuredParam(@RequestParam("latitude") double latitude, @RequestParam("longitude") double longitude, @RequestParam("radius") int radius, @RequestParam("measuredParam") String measuredParam) throws JSONException, JsonProcessingException {
+        ResponseEntity<String> response = null;
+
+        try{
+            List<AirQuality> allAirQuality = openAqDataSource.getByCoordinatesAndMeasuredParam(latitude, longitude, radius, measuredParam);
+
+            ObjectMapper mapper = new ObjectMapper();
+            String actualString = mapper.writeValueAsString(allAirQuality);
+            JSONArray actualAirQualities = new JSONArray(actualString);
+
+            response = new ResponseEntity<String>(actualAirQualities.toString(), HttpStatus.OK);
+
+        }catch(JSONException ex){
+            response = new ResponseEntity<String>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return response;
+    }
 }

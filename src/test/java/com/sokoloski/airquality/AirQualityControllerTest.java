@@ -1,14 +1,10 @@
 package com.sokoloski.airquality;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.util.JSONPObject;
-import jdk.nashorn.internal.parser.JSONParser;
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -93,6 +89,71 @@ public class AirQualityControllerTest {
 
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders
                         .get("/airQualityByCountryAndMeasuredParam?country=" + country + "&measuredParam=" + measuredParam)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().is5xxServerError())
+                .andReturn();
+
+        Assert.assertTrue(result.getResponse().getContentAsString().contains(errorMessage));
+    }
+
+    @Test
+    public void airQualityByCoordinatesAndRadiusAndMeasuredParam_ReturnsListOfAirQuality() throws Exception {
+        double latitude = 34.11;
+        double longitude = -122.021;
+        int radius = 5;
+        String measuredParam = "um025";
+        List<AirQuality> expected = getTestListOfAirQuality();
+
+        when(mockOpenAqDataSource.getByCoordinatesAndMeasuredParam(latitude, longitude, radius, measuredParam)).thenReturn(expected);
+
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/airQualityByCoordinatesAndRadiusAndMeasuredParam?latitude=" + latitude + "&longitude=" + longitude + "&radius=" + radius + "&measuredParam=" + measuredParam)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        ObjectMapper mapper = new ObjectMapper();
+        String expectedString = mapper.writeValueAsString(expected);
+        JSONArray expectedAirQualities = new JSONArray(expectedString);
+
+        Assert.assertTrue(result.getResponse().getContentAsString().contains(expectedAirQualities.toString()));
+    }
+
+    @Test
+    public void airQualityByCoordinatesAndRadiusAndMeasuredParam_ReturnsEmptyListWhenQueryHasNoResults() throws Exception {
+        double latitude = 34.11;
+        double longitude = -122.021;
+        int radius = 5;
+        String measuredParam = "um025";
+        List<AirQuality> expected = new ArrayList<AirQuality>();
+
+        when(mockOpenAqDataSource.getByCoordinatesAndMeasuredParam(latitude, longitude, radius, measuredParam)).thenReturn(expected);
+
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/airQualityByCoordinatesAndRadiusAndMeasuredParam?latitude=" + latitude + "&longitude=" + longitude + "&radius=" + radius + "&measuredParam=" + measuredParam)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        ObjectMapper mapper = new ObjectMapper();
+        String expectedString = mapper.writeValueAsString(expected);
+        JSONArray expectedAirQualities = new JSONArray(expectedString);
+
+        Assert.assertTrue(result.getResponse().getContentAsString().contains(expectedAirQualities.toString()));
+    }
+
+    @Test
+    public void airQualityByCoordinatesAndRadiusAndMeasuredParam_ReturnsErrorMessageOnFailedQuery() throws Exception {
+        double latitude = 34.11;
+        double longitude = -122.021;
+        int radius = 5;
+        String measuredParam = "um025";
+        String errorMessage = "We had an error.  Could not parse JSON result";
+
+        when(mockOpenAqDataSource.getByCoordinatesAndMeasuredParam(latitude, longitude, radius, measuredParam)).thenThrow(new JSONException(errorMessage));
+
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders
+                        .get("/airQualityByCoordinatesAndRadiusAndMeasuredParam?latitude=" + latitude + "&longitude=" + longitude + "&radius=" + radius + "&measuredParam=" + measuredParam)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().is5xxServerError())
                 .andReturn();

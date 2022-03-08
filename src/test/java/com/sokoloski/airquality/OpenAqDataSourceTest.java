@@ -74,7 +74,7 @@ public class OpenAqDataSourceTest {
     }
 
     @Test
-    public void getByCountryAndMeasuredParam_ReturnListWithValidData() throws JSONException {
+    public void getByCountryAndMeasuredParam_ReturnListWithValidData1() throws JSONException {
         String countryCode = "US";
         String measuredParam = "pm1";
 
@@ -85,7 +85,41 @@ public class OpenAqDataSourceTest {
         aq.setCountry("US");
         aq.setCoordinates(new AirQualityCooredinates(36.1335,-122.443));
         aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
-        aq.getParameters().add(new AirQualityParameter(51998, measuredParam, "PM1", "ug/m3", 1.3));
+        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
+        allAqs.add(aq);
+
+        JSONObject jsonBody = getResponseJsonBody(allAqs);
+        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
+
+        Mockito.when(restTemplate.exchange(
+                        eq(locationUrl + "&country_id=" + countryCode),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        List<AirQuality> retval = testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
+
+        Assert.assertEquals(allAqs.size(), retval.size());
+        Assert.assertEquals(allAqs.get(0).getId(), retval.get(0).getId());
+        for (AirQualityParameter aqm: retval.get(0).getParameters()) {
+            Assert.assertEquals(measuredParam, aqm.getParameter());
+        }
+    }
+
+    @Test
+    public void getByCountryAndMeasuredParam_ReturnListWithValidData2() throws JSONException {
+        String countryCode = "CA";
+        String measuredParam = "um025";
+
+        List<AirQuality> allAqs = new ArrayList<AirQuality>();
+        AirQuality aq = new AirQuality();
+        aq.setId(44654);
+        aq.setName("Faimront MN");
+        aq.setCountry("US");
+        aq.setCoordinates(new AirQualityCooredinates(36.1335,-122.443));
+        aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
+        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
         allAqs.add(aq);
 
         JSONObject jsonBody = getResponseJsonBody(allAqs);

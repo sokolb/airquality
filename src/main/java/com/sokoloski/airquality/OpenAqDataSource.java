@@ -40,6 +40,8 @@ public class OpenAqDataSource implements AirQualityDataSource{
                     JSONObject result = results.getJSONObject(i);
                     try {
                         AirQuality aq = objectMapper.readValue(result.toString(), AirQuality.class);
+                        aq.getParameters().removeIf(p -> !p.getParameter().equals(measuredParam));
+
                         retval.add(aq);
                     } catch (JsonProcessingException e) {
                         e.printStackTrace();

@@ -136,6 +136,32 @@ public class OpenAqDataSourceTest {
     }
 
     @Test
+    public void getByCountryAndMeasuredParam_ReturnsEmptyListWhenNoResults() throws JSONException {
+        String countryCode = "CA";
+        String measuredParam = "um025";
+
+        List<AirQuality> allAqs = getTestListOfAirQuality();
+        for (AirQuality aq : allAqs){
+            aq.setParameters(new ArrayList<AirQualityParameter>());
+        }
+        JSONObject jsonBody = getResponseJsonBody(allAqs);
+
+        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
+        Mockito.when(restTemplate.exchange(
+                        ArgumentMatchers.anyString(),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        List<AirQuality> retval = testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
+
+        for (AirQuality aq : retval){
+            Assert.assertEquals(0, aq.getParameters().size());
+        }
+    }
+
+    @Test
     public void getByCoordinatesAndMeasuredParam_CallsOpenAqLocationsUrl() throws JSONException {
         double latitude = 33.999504;
         double longitude = -117.41602;
@@ -225,6 +251,33 @@ public class OpenAqDataSourceTest {
         String actual = exception.getMessage();
 
         Assert.assertTrue(actual.contains(expected));
+    }
+
+    @Test
+    public void ggetByCoordinatesAndMeasuredParam_ReturnsEmptyListWhenNoResults() throws JSONException {
+        double latitude = 42;
+        double longitude = -118;
+        String measuredParam = "um025";
+
+        List<AirQuality> allAqs = getTestListOfAirQuality();
+        for (AirQuality aq : allAqs){
+            aq.setParameters(new ArrayList<AirQualityParameter>());
+        }
+        JSONObject jsonBody = getResponseJsonBody(allAqs);
+
+        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
+        Mockito.when(restTemplate.exchange(
+                        ArgumentMatchers.anyString(),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        List<AirQuality> retval = testObject.getByCoordinatesAndMeasuredParam(latitude, longitude, measuredParam);
+
+        for (AirQuality aq : retval){
+            Assert.assertEquals(0, aq.getParameters().size());
+        }
     }
 
     private JSONObject getResponseJsonBody(List<AirQuality> airQualities) throws JSONException {

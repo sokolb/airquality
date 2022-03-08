@@ -24,7 +24,8 @@ import static org.mockito.Mockito.verify;
 @RunWith(MockitoJUnitRunner.class)
 public class OpenAqDataSourceTest {
 
-    private static final String locationUrl = "https://docs.openaq.org/v2/locations?limit=10";
+    private static final String locationUrlForCountryCode = "https://docs.openaq.org/v2/locations?limit=10";
+    private static final String locationUrlForCoordinates = "https://docs.openaq.org/v2/locations?limit=10&radius=1";
 
     @Mock
     RestTemplate restTemplate;
@@ -55,7 +56,7 @@ public class OpenAqDataSourceTest {
         testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
 
         verify(restTemplate, times(1)).exchange(
-                eq(locationUrl + "&country_id=" + countryCode),
+                eq(locationUrlForCountryCode + "&country_id=" + countryCode),
                 eq(HttpMethod.GET),
                 eq(null),
                 eq(String.class));
@@ -67,7 +68,7 @@ public class OpenAqDataSourceTest {
         ResponseEntity<String> response = new ResponseEntity<String>("", HttpStatus.INTERNAL_SERVER_ERROR);
 
         Mockito.when(restTemplate.exchange(
-                        eq(locationUrl + "&country_id=" + countryCode),
+                        eq(locationUrlForCountryCode + "&country_id=" + countryCode),
                         ArgumentMatchers.any(HttpMethod.class),
                         ArgumentMatchers.any(),
                         ArgumentMatchers.<Class<String>>any()))
@@ -121,7 +122,7 @@ public class OpenAqDataSourceTest {
         ResponseEntity<String> response = new ResponseEntity<String>("{meta:{},results:{no result set, will result in parse error}}", HttpStatus.OK);
 
         Mockito.when(restTemplate.exchange(
-                        eq(locationUrl + "&country_id=" + countryCode),
+                        eq(locationUrlForCountryCode + "&country_id=" + countryCode),
                         ArgumentMatchers.any(HttpMethod.class),
                         ArgumentMatchers.any(),
                         ArgumentMatchers.<Class<String>>any()))
@@ -136,6 +137,40 @@ public class OpenAqDataSourceTest {
 
         Assert.assertTrue(actual.contains(expected));
     }
+
+    @Test
+    public void getByCoordinatesAndMeasuredParam_CallsOpenAqLocationsUrl(){
+        double latitude = 33.999504;
+        double longitude = -117.41602;
+        String measuredParam = "um025";
+
+        testObject.getByCoordinatesAndMeasuredParam(latitude, longitude, measuredParam);
+
+        verify(restTemplate, times(1)).exchange(
+                eq(locationUrlForCoordinates + "&coordinates=" + latitude + "," + longitude),
+                eq(HttpMethod.GET),
+                eq(null),
+                eq(String.class));
+    }
+
+    @Test
+    public void getByCoordinatesAndMeasuredParam_ReturnEmptyListWhenAqLocationsDoesntReturn200() throws JSONException {
+        double latitude = 33.999504;
+        double longitude = -117.41602;
+        ResponseEntity<String> response = new ResponseEntity<String>("", HttpStatus.INTERNAL_SERVER_ERROR);
+
+        Mockito.when(restTemplate.exchange(
+                        eq(locationUrlForCoordinates + "&coordinates=" + latitude + "," + longitude),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        List<AirQuality> retval = testObject.getByCoordinatesAndMeasuredParam(latitude, longitude,"pm25");
+
+        Assert.assertEquals(null, retval);
+    }
+
 
     private JSONObject getResponseJsonBody(List<AirQuality> airQualities) throws JSONException {
         JSONObject jsonBody = new JSONObject();

@@ -21,7 +21,7 @@ public class OpenAqDataSource implements AirQualityDataSource{
     private final String locationUrl = "https://docs.openaq.org/v2/locations?limit=10";
 
     @Override
-    public List<AirQuality> getByCountryAndMeasuredParam(String countryCode, String measuredParam) {
+    public List<AirQuality> getByCountryAndMeasuredParam(String countryCode, String measuredParam) throws JSONException {
         List<AirQuality> retval = new ArrayList<AirQuality>();
 
         String targetUrl = String.format(locationUrl + "&country_id=%s", countryCode);
@@ -48,7 +48,7 @@ public class OpenAqDataSource implements AirQualityDataSource{
                     }
                 }
             } catch (JSONException e) {
-                e.printStackTrace();
+                throw new JSONException("Result has invalid JSON " + e);
             }
         }
 

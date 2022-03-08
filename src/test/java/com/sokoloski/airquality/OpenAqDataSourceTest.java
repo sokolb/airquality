@@ -16,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,9 +34,11 @@ public class OpenAqDataSourceTest {
     private OpenAqDataSource testObject;
 
     @Before
-    public void init() {
-        ResponseEntity<String> response = new ResponseEntity<String>("", HttpStatus.OK);
+    public void init() throws JSONException {
+        List<AirQuality> allAqs = getTestListOfAirQuality();
+        JSONObject jsonBody = getResponseJsonBody(allAqs);
 
+        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
         Mockito.when(restTemplate.exchange(
                         ArgumentMatchers.anyString(),
                         ArgumentMatchers.any(HttpMethod.class),
@@ -46,8 +49,10 @@ public class OpenAqDataSourceTest {
 
     @Test
     public void getByCountryAndMeasuredParam_CallsOpenAqLocationsUrl() throws JSONException {
-        String countryCode = "US";
-        testObject.getByCountryAndMeasuredParam(countryCode,"pm25");
+        String countryCode = "CA";
+        String measuredParam = "um025";
+
+        testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
 
         verify(restTemplate, times(1)).exchange(
                 eq(locationUrl + "&country_id=" + countryCode),
@@ -78,25 +83,7 @@ public class OpenAqDataSourceTest {
         String countryCode = "US";
         String measuredParam = "pm1";
 
-        List<AirQuality> allAqs = new ArrayList<AirQuality>();
-        AirQuality aq = new AirQuality();
-        aq.setId(44654);
-        aq.setName("Faimront MN");
-        aq.setCountry("US");
-        aq.setCoordinates(new AirQualityCooredinates(36.1335,-122.443));
-        aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
-        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
-        allAqs.add(aq);
-
-        JSONObject jsonBody = getResponseJsonBody(allAqs);
-        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
-
-        Mockito.when(restTemplate.exchange(
-                        eq(locationUrl + "&country_id=" + countryCode),
-                        ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(),
-                        ArgumentMatchers.<Class<String>>any()))
-                .thenReturn(response);
+        List<AirQuality> allAqs = getTestListOfAirQuality();
 
         List<AirQuality> retval = testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
 
@@ -112,25 +99,7 @@ public class OpenAqDataSourceTest {
         String countryCode = "CA";
         String measuredParam = "um025";
 
-        List<AirQuality> allAqs = new ArrayList<AirQuality>();
-        AirQuality aq = new AirQuality();
-        aq.setId(44654);
-        aq.setName("Faimront MN");
-        aq.setCountry("US");
-        aq.setCoordinates(new AirQualityCooredinates(36.1335,-122.443));
-        aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
-        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
-        allAqs.add(aq);
-
-        JSONObject jsonBody = getResponseJsonBody(allAqs);
-        ResponseEntity<String> response = new ResponseEntity<String>(jsonBody.toString(), HttpStatus.OK);
-
-        Mockito.when(restTemplate.exchange(
-                        eq(locationUrl + "&country_id=" + countryCode),
-                        ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(),
-                        ArgumentMatchers.<Class<String>>any()))
-                .thenReturn(response);
+        List<AirQuality> allAqs = getTestListOfAirQuality();
 
         List<AirQuality> retval = testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
 
@@ -139,6 +108,33 @@ public class OpenAqDataSourceTest {
         for (AirQualityParameter aqm: retval.get(0).getParameters()) {
             Assert.assertEquals(measuredParam, aqm.getParameter());
         }
+    }
+
+    @Test
+    public void getByCountryAndMeasuredParam_ThrowsExceptionOnInvalidResponse() throws JSONException {
+        String countryCode = "CA";
+        String measuredParam = "um025";
+
+        List<AirQuality> allAqs = getTestListOfAirQuality();
+
+        JSONObject jsonBody = getResponseJsonBody(allAqs);
+        ResponseEntity<String> response = new ResponseEntity<String>("{meta:{},results:{no result set, will result in parse error}}", HttpStatus.OK);
+
+        Mockito.when(restTemplate.exchange(
+                        eq(locationUrl + "&country_id=" + countryCode),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        Exception exception = assertThrows(JSONException.class, () -> {
+            testObject.getByCountryAndMeasuredParam(countryCode, measuredParam);
+        });
+
+        String expected = "Result has invalid JSON";
+        String actual = exception.getMessage();
+
+        Assert.assertTrue(actual.contains(expected));
     }
 
     private JSONObject getResponseJsonBody(List<AirQuality> airQualities) throws JSONException {
@@ -175,5 +171,18 @@ public class OpenAqDataSourceTest {
         jsonBody.put("results", results);
 
         return jsonBody;
+    }
+
+    private List<AirQuality> getTestListOfAirQuality(){
+        List<AirQuality> allAqs = new ArrayList<AirQuality>();
+        AirQuality aq = new AirQuality();
+        aq.setId(44654);
+        aq.setName("Faimront MN");
+        aq.setCountry("US");
+        aq.setCoordinates(new AirQualityCooredinates(36.1335,-122.443));
+        aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
+        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
+        allAqs.add(aq);
+        return allAqs;
     }
 }

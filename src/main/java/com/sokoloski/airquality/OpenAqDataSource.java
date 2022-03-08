@@ -18,15 +18,13 @@ import java.util.List;
 public class OpenAqDataSource implements AirQualityDataSource{
 
     private RestTemplate restTemplate = new RestTemplate();
-    private final String locationUrlForCountryCode = "https://docs.openaq.org/v2/locations?limit=10";
-    private final String locationUrlForCoordinates = "https://docs.openaq.org/v2/locations?limit=10";
-
+    private final String locationUrl = "https://docs.openaq.org/v2/locations?limit=10";
 
     @Override
     public List<AirQuality> getByCountryAndMeasuredParam(String countryCode, String measuredParam) throws JSONException {
         List<AirQuality> retval = new ArrayList<AirQuality>();
 
-        String targetUrl = String.format(locationUrlForCountryCode + "&country_id=%s", countryCode);
+        String targetUrl = String.format(locationUrl + "&country_id=%s", countryCode);
         ResponseEntity<String> response = restTemplate.exchange(targetUrl, HttpMethod.GET, null, String.class);
         if (!response.getStatusCode().equals(HttpStatus.OK)) {
             retval = null;
@@ -61,7 +59,7 @@ public class OpenAqDataSource implements AirQualityDataSource{
     public List<AirQuality> getByCoordinatesAndMeasuredParam(double latitude, double longitude, int radius, String measuredParam) throws JSONException {
         List<AirQuality> retval = new ArrayList<AirQuality>();
 
-        String targetUrl = String.format(locationUrlForCoordinates + "&radius=" + radius + "&coordinates=" + latitude + "," + longitude);
+        String targetUrl = String.format(locationUrl + "&radius=" + radius + "&coordinates=" + latitude + "," + longitude);
         ResponseEntity<String> response = restTemplate.exchange(targetUrl, HttpMethod.GET, null, String.class);
         if (!response.getStatusCode().equals(HttpStatus.OK)) {
             retval = null;

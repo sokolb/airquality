@@ -116,9 +116,6 @@ public class OpenAqDataSourceTest {
         String countryCode = "CA";
         String measuredParam = "um025";
 
-        List<AirQuality> allAqs = getTestListOfAirQuality();
-
-        JSONObject jsonBody = getResponseJsonBody(allAqs);
         ResponseEntity<String> response = new ResponseEntity<String>("{meta:{},results:{no result set, will result in parse error}}", HttpStatus.OK);
 
         Mockito.when(restTemplate.exchange(
@@ -139,7 +136,7 @@ public class OpenAqDataSourceTest {
     }
 
     @Test
-    public void getByCoordinatesAndMeasuredParam_CallsOpenAqLocationsUrl(){
+    public void getByCoordinatesAndMeasuredParam_CallsOpenAqLocationsUrl() throws JSONException {
         double latitude = 33.999504;
         double longitude = -117.41602;
         String measuredParam = "um025";
@@ -171,6 +168,64 @@ public class OpenAqDataSourceTest {
         Assert.assertEquals(null, retval);
     }
 
+    @Test
+    public void getByCoordinatesAndMeasuredParam_ReturnListWithValidData1() throws JSONException {
+        double latitude = 33.999504;
+        double longitude = -117.41602;
+        String measuredParam = "pm1";
+
+        List<AirQuality> allAqs = getTestListOfAirQuality();
+
+        List<AirQuality> retval = testObject.getByCoordinatesAndMeasuredParam(latitude, longitude, measuredParam);
+
+        Assert.assertEquals(allAqs.size(), retval.size());
+        Assert.assertEquals(allAqs.get(0).getId(), retval.get(0).getId());
+        for (AirQualityParameter aqm: retval.get(0).getParameters()) {
+            Assert.assertEquals(measuredParam, aqm.getParameter());
+        }
+    }
+
+    @Test
+    public void getByCoordinatesAndMeasuredParam_ReturnListWithValidData2() throws JSONException {
+        double latitude = 42;
+        double longitude = -118;
+        String measuredParam = "um125";
+
+        List<AirQuality> allAqs = getTestListOfAirQuality();
+
+        List<AirQuality> retval = testObject.getByCoordinatesAndMeasuredParam(latitude, longitude, measuredParam);
+
+        Assert.assertEquals(allAqs.size(), retval.size());
+        Assert.assertEquals(allAqs.get(0).getId(), retval.get(0).getId());
+        for (AirQualityParameter aqm: retval.get(0).getParameters()) {
+            Assert.assertEquals(measuredParam, aqm.getParameter());
+        }
+    }
+
+    @Test
+    public void getByCoordinatesAndMeasuredParam_ThrowsExceptionOnInvalidResponse() throws JSONException {
+        double latitude = 42;
+        double longitude = -118;
+        String measuredParam = "um025";
+
+        ResponseEntity<String> response = new ResponseEntity<String>("{meta:{},results:{no result set, will result in parse error}}", HttpStatus.OK);
+
+        Mockito.when(restTemplate.exchange(
+                        eq(locationUrlForCoordinates + "&coordinates=" + latitude + "," + longitude),
+                        ArgumentMatchers.any(HttpMethod.class),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.<Class<String>>any()))
+                .thenReturn(response);
+
+        Exception exception = assertThrows(JSONException.class, () -> {
+            testObject.getByCoordinatesAndMeasuredParam(latitude, longitude, measuredParam);
+        });
+
+        String expected = "Result has invalid JSON";
+        String actual = exception.getMessage();
+
+        Assert.assertTrue(actual.contains(expected));
+    }
 
     private JSONObject getResponseJsonBody(List<AirQuality> airQualities) throws JSONException {
         JSONObject jsonBody = new JSONObject();
@@ -210,6 +265,7 @@ public class OpenAqDataSourceTest {
 
     private List<AirQuality> getTestListOfAirQuality(){
         List<AirQuality> allAqs = new ArrayList<AirQuality>();
+
         AirQuality aq = new AirQuality();
         aq.setId(44654);
         aq.setName("Faimront MN");
@@ -218,6 +274,16 @@ public class OpenAqDataSourceTest {
         aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
         aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
         allAqs.add(aq);
+
+        aq = new AirQuality();
+        aq.setId(44699);
+        aq.setName("Sherburn MN");
+        aq.setCountry("US");
+        aq.setCoordinates(new AirQualityCooredinates(35.123,-124.444));
+        aq.getParameters().add(new AirQualityParameter(51902, "um025", "PM2.5 count", "particles/cm2", .02));
+        aq.getParameters().add(new AirQualityParameter(51998, "pm1", "PM1", "ug/m3", 1.3));
+        allAqs.add(aq);
+
         return allAqs;
     }
 }

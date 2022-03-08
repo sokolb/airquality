@@ -58,7 +58,7 @@ public class OpenAqDataSource implements AirQualityDataSource{
     }
 
     @Override
-    public List<AirQuality> getByCoordinatesAndMeasuredParam(double latitude, double longitude, String measuredParam) {
+    public List<AirQuality> getByCoordinatesAndMeasuredParam(double latitude, double longitude, String measuredParam) throws JSONException {
         List<AirQuality> retval = new ArrayList<AirQuality>();
 
         String targetUrl = String.format(locationUrlForCoordinates + "&coordinates=" + latitude + "," + longitude);
@@ -66,7 +66,27 @@ public class OpenAqDataSource implements AirQualityDataSource{
         if (!response.getStatusCode().equals(HttpStatus.OK)) {
             retval = null;
         } else {
+            ObjectMapper objectMapper = new ObjectMapper();
 
+            JSONObject body = null;
+            try {
+                body = new JSONObject(response.getBody());
+                JSONArray results = body.getJSONArray("results");
+
+                for(int i = 0; i < results.length(); i++){
+                    JSONObject result = results.getJSONObject(i);
+                    try {
+                        AirQuality aq = objectMapper.readValue(result.toString(), AirQuality.class);
+                        aq.getParameters().removeIf(p -> !p.getParameter().equals(measuredParam));
+
+                        retval.add(aq);
+                    } catch (JsonProcessingException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } catch (JSONException e) {
+                throw new JSONException("Result has invalid JSON " + e);
+            }
         }
         return retval;
     }
